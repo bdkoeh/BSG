@@ -1,0 +1,18 @@
+{
+  "name": "bsg",
+  "description": "BSG, a conversational development workflow for Claude Code and Codex.",
+  "owner": {
+    "name": "bdkoeh",
+    "url": "https://github.com/bdkoeh"
+  },
+  "plugins": [
+    {
+      "name": "bsg",
+      "source": ".",
+      "description": "Shape a product in conversation while subagents build the ready parts. Adds the /bsg skill with start, help, status, pause, and resume.",
+      "version": "0.1.0",
+      "category": "productivity",
+      "tags": ["workflow", "planning", "discovery", "delivery"]
+    }
+  ]
+}

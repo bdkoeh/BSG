@@ -1,0 +1,13 @@
+{
+  "name": "bsg",
+  "description": "BSG: conversational discovery, planning, and delegated delivery with durable project records.",
+  "version": "0.1.0",
+  "author": {
+    "name": "bdkoeh",
+    "url": "https://github.com/bdkoeh/BSG"
+  },
+  "homepage": "https://github.com/bdkoeh/BSG",
+  "license": "MIT",
+  "repository": "https://github.com/bdkoeh/BSG",
+  "keywords": ["workflow", "planning", "discovery", "delivery"]
+}

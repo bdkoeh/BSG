@@ -1,0 +1,4 @@
+interface:
+  display_name: "BSG"
+  short_description: "Shape ideas and coordinate delivery with BSG"
+  default_prompt: "Use $bsg to continue my project with BSG."

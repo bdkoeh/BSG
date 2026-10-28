@@ -1,8 +1,10 @@
 # BSG — Brief, Slice, Go
 
-A conversational development framework for Claude Code and Codex. Brief the idea, cut it into slices, and go build one when it is ready. Shape the product with your lead agent while subagents build the parts that are ready. Keep decisions, plans, progress, and verification in the project folder.
+**Give your coding agents a clear understanding of what to build before they start building.** BSG guides you through detailed conversations that turn an idea into shared context, explicit decisions, and actionable plans. It asks focused questions, explores tradeoffs, and investigates uncertainty so implementation starts with more than a prompt and a few assumptions.
 
-BSG is designed around my workflow: adaptive picker interviews, continuous discovery, experiments for uncertain questions, deliberate checkpoints, and inexpensive changes of direction.
+Then planning and delivery overlap. Your lead agent coordinates subagents building and verifying approved slices while you work through the details of what comes next. You establish the overall direction upfront, deepen each slice before it’s built, and keep room to adapt as you learn.
+
+Built for Claude Code and Codex.
 
 ## Start here
 

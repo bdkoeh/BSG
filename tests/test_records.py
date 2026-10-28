@@ -40,6 +40,8 @@ class Records(unittest.TestCase):
         folder = self.root / self.slice["path"]
         (folder / "CONTEXT.md").write_text("# Context\nUser requested the first outcome; behavior agreed in discovery.\n", encoding="utf-8")
         (folder / "PLAN.md").write_text("# Plan\nImplement the first outcome and verify the agreed behavior.\n", encoding="utf-8")
+        (folder / "SUMMARY.md").write_text("Implemented the agreed outcome.\n", encoding="utf-8")
+        (folder / "VERIFICATION.md").write_text("Checked the agreed behavior at revision 1; observed expected output.\n", encoding="utf-8")
         evidence = self.slice["path"] + "/VERIFICATION.md"
         self.slice["checks"] = [dict(id="behavior", required=True, result="pass", revision=1, evidence=evidence)]
         self.slice["acceptance"] = dict(required=False, status="not_required", revision=None, evidence=None)
@@ -165,6 +167,122 @@ class Records(unittest.TestCase):
         self.slice["status"] = "ready"
         (self.root / self.slice["path"] / "PLAN.md").write_text("# Plan\n## Steps\nTBD\n<!-- pending -->\n", encoding="utf-8")
         self.assertTrue(any("populate PLAN.md" in e for e in bsg.validate(self.root, self.data)))
+
+
+    def test_lazy_records_enforce_stage_requirements(self):
+        folder = self.root / self.slice["path"]
+        self.assertEqual({"CONTEXT.md"}, {p.name for p in folder.iterdir()})
+        self.assertFalse((self.root / ".planning/BACKLOG.md").exists())
+        self.assertFalse((self.root / ".planning/DECISIONS.md").exists())
+        (folder / "CONTEXT.md").write_text("User agreed to the first outcome.", encoding="utf-8")
+        self.slice["status"] = "discussed"
+        self.assertEqual([], bsg.validate(self.root, self.data))
+        self.slice["status"] = "ready"
+        self.slice["checks"] = [dict(id="behavior", required=True, result="pending", revision=None, evidence=None)]
+        self.assertTrue(any("PLAN.md" in e for e in bsg.validate(self.root, self.data)))
+        (folder / "PLAN.md").write_text("Implement and check the agreed outcome.", encoding="utf-8")
+        self.assertEqual([], bsg.validate(self.root, self.data))
+        self.slice["status"] = "implemented"
+        self.assertTrue(any("SUMMARY.md" in e for e in bsg.validate(self.root, self.data)))
+        (folder / "SUMMARY.md").write_text("Implemented the outcome; checks pending.", encoding="utf-8")
+        self.assertEqual([], bsg.validate(self.root, self.data))
+        self.slice["status"] = "verified"
+        self.assertTrue(any("VERIFICATION.md" in e for e in bsg.validate(self.root, self.data)))
+
+    def test_early_failed_check_requires_existing_evidence(self):
+        evidence = self.slice["path"] + "/VERIFICATION.md"
+        self.slice["checks"] = [dict(id="probe", required=True, result="fail", revision=1, evidence=evidence)]
+        self.assertTrue(any("evidence path" in e for e in bsg.validate(self.root, self.data)))
+        (self.root / evidence).write_text("Probe failed: output was empty.", encoding="utf-8")
+        self.assertEqual([], bsg.validate(self.root, self.data))
+
+    def test_decisions_document_needed_only_with_indexed_decisions(self):
+        self.data["decisions"] = [dict(id="D-001", revision=1, status="proposed")]
+        self.assertTrue(any("DECISIONS.md" in e for e in bsg.validate(self.root, self.data)))
+        (self.root / ".planning/DECISIONS.md").write_text("D-001: proposed import flow.", encoding="utf-8")
+        self.assertEqual([], bsg.validate(self.root, self.data))
+
+    def test_sync_preserves_legacy_notes_and_is_idempotent(self):
+        planning = self.root / ".planning"
+        legacy = b"# My roadmap\r\nCustom checkpoint notes.\r\n"
+        (planning / "ROADMAP.md").write_bytes(legacy)
+        bsg.sync(self.root)
+        first = {name: (planning / name).read_bytes() for name in ("ROADMAP.md", "STATE.md")}
+        self.assertTrue(first["ROADMAP.md"].startswith(legacy))
+        self.assertIn(b"First outcome", first["ROADMAP.md"])
+        bsg.sync(self.root)
+        self.assertEqual(first, {name: (planning / name).read_bytes() for name in first})
+        with (planning / "STATE.md").open("ab") as output:
+            output.write(b"\nUnanswered: choose a preview.\n")
+        self.slice.update(status="blocked", blocker="Need fixture", agent="old-handle")
+        bsg.write_json(planning / "state.json", self.data)
+        index_before = (planning / "state.json").read_bytes()
+        bsg.sync(self.root)
+        state = (planning / "STATE.md").read_text()
+        self.assertIn("Need fixture", state)
+        self.assertIn("old-handle", state)
+        self.assertTrue(state.endswith("Unanswered: choose a preview.\n"))
+        self.assertEqual(index_before, (planning / "state.json").read_bytes())
+
+    def test_sync_preflights_both_files(self):
+        planning = self.root / ".planning"
+        (planning / "ROADMAP.md").write_text("Preserve me", encoding="utf-8")
+        (planning / "STATE.md").write_text("<!-- BSG:GENERATED:BEGIN -->", encoding="utf-8")
+        before = {p: p.read_bytes() for p in planning.rglob("*") if p.is_file()}
+        with self.assertRaises(ValueError):
+            bsg.sync(self.root)
+        self.assertEqual(before, {p: p.read_bytes() for p in planning.rglob("*") if p.is_file()})
+
+    def test_sync_refuses_invalid_index_without_writing(self):
+        self.slice["status"] = "complete"
+        bsg.write_json(self.root / ".planning/state.json", self.data)
+        before = {p: p.read_bytes() for p in self.root.rglob("*") if p.is_file()}
+        with self.assertRaises(ValueError):
+            bsg.sync(self.root)
+        self.assertEqual(before, {p: p.read_bytes() for p in self.root.rglob("*") if p.is_file()})
+
+    def test_missing_generated_views_do_not_block_status(self):
+        for name in ("ROADMAP.md", "STATE.md"):
+            (self.root / ".planning" / name).unlink()
+        before = {p: p.read_bytes() for p in self.root.rglob("*") if p.is_file()}
+        output, code = bsg.report(self.root)
+        self.assertEqual(0, code)
+        self.assertIn("First outcome", output)
+        self.assertEqual(before, {p: p.read_bytes() for p in self.root.rglob("*") if p.is_file()})
+        bsg.sync(self.root)
+        self.assertTrue((self.root / ".planning/STATE.md").is_file())
+
+    def test_legacy_full_scaffold_still_valid(self):
+        bsg.docs(self.root / ".planning", bsg.PROJECT_DOCS, "Legacy project")
+        bsg.docs(self.root / self.slice["path"], bsg.SLICE_DOCS, "Legacy slice")
+        self.assertEqual([], bsg.validate(self.root, self.data))
+        before = {p: p.read_bytes() for p in (self.root / self.slice["path"]).iterdir()}
+        bsg.sync(self.root)
+        self.assertEqual(before, {p: p.read_bytes() for p in before})
+
+    def test_generated_cells_cannot_inject_markers_or_rows(self):
+        self.slice["title"] = "A | B\n<!-- BSG:GENERATED:END -->"
+        bsg.write_json(self.root / ".planning/state.json", self.data)
+        bsg.sync(self.root)
+        bsg.sync(self.root)
+        roadmap = (self.root / ".planning/ROADMAP.md").read_text()
+        self.assertEqual(1, roadmap.count("<!-- BSG:GENERATED:END -->"))
+        self.assertIn("A &#124; B", roadmap)
+
+    def test_sync_refuses_symlink_output(self):
+        planning = self.root / ".planning"
+        target = self.root / "notes.md"
+        target.write_text("Preserve", encoding="utf-8")
+        (planning / "STATE.md").unlink()
+        try:
+            (planning / "STATE.md").symlink_to(target)
+        except OSError:
+            self.skipTest("Symlinks unavailable")
+        roadmap = (planning / "ROADMAP.md").read_bytes()
+        with self.assertRaises(ValueError):
+            bsg.sync(self.root)
+        self.assertEqual("Preserve", target.read_text())
+        self.assertEqual(roadmap, (planning / "ROADMAP.md").read_bytes())
 
 
 class ProjectHandoff(unittest.TestCase):

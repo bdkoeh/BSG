@@ -6,27 +6,34 @@ All paths below are relative to the target project, not the skill folder. The ag
 
 The root `AGENTS.md` provides a short handoff for future chats in either host. `init` creates it or appends the marked block from [project-agents.md](../assets/project-agents.md), preserving existing content. Claude Code ignores `AGENTS.md` once a project has a `CLAUDE.md`, `.claude/CLAUDE.md`, or `CLAUDE.local.md`, so in that case the helper adds the same block to the root `CLAUDE.md` too. For an older BSG project, use `bsg.py attach --root <project>` on start/resume; never rerun init over existing records. An existing marked BSG block is preserved, including user customizations. Malformed markers in any target require reconciliation before anything is written. If Python is unavailable, append the same template once manually to the same files. Do not change other instructions or store live progress in this block; progress belongs in `.planning`. Do not modify these files during read-only help/status.
 
-```text
-.planning/
-  PROJECT.md          Product intent, boundaries, effort, involvement, authorization
-  ROADMAP.md          Outcomes, dependencies and human testing checkpoints
-  DECISIONS.md        Stable IDs, revisions, rationale and source of agreement
-  STATE.md            Short current handoff: live work, questions, blockers, next action
-  state.json          Machine-readable index of slices, decisions and evidence
-  BACKLOG.md          Deferred ideas and larger feedback items
-  CODEBASE.md         Optional focused inspection with real paths and freshness
-  discovery/          Proposals, experiments and findings outside committed work
-  research/           Sources and findings worth retaining
-  slices/001-name/
-    CONTEXT.md        Intent, examples and discussion decisions
-    PLAN.md           Approach, dependencies, ownership, acceptance and checkpoint
-    SUMMARY.md        Implemented changes, remaining work and handoff
-    VERIFICATION.md   Procedures, results, code identity and limitations
-```
+## Create records when needed
 
-The lead owns shared records and state.json. Workers own assigned slice reports. state.json is authoritative for indexed lifecycle metadata; Markdown contains the actual reasoning and evidence. ROADMAP/STATE are readable summaries reconciled with the index, not separate independent status stores. Actual code and fresh verification take precedence over stale records.
+`init` creates PROJECT.md, state.json, generated ROADMAP.md/STATE.md views, and the instruction handoff. Research/discovery directories can remain empty until useful findings exist. `slice` allocates the stable ID and directory and creates only CONTEXT.md. Write other documents directly when their stage needs them; do not fill future files with placeholders.
 
-Update records after consequential discussions, dispatch, meaningful progress, blocker discovery, verification, feedback, and before a pause/handoff. This is part of the work. Store concise decisions and evidence, not entire transcripts. Preserve past decisions when superseded.
+| Record | Create or populate when |
+| --- | --- |
+| PROJECT.md | Initialization; capture intent, boundaries, effort, involvement and execution scope |
+| DECISIONS.md | First indexed decision; retain rationale, provenance and superseded decisions |
+| BACKLOG.md | First deferred item worth retaining |
+| CODEBASE.md, discovery/, research/ | Relevant inspection, proposals, experiments or research produce useful context |
+| slices/001-name/CONTEXT.md | Slice creation; populate before `discussed` |
+| PLAN.md | Planning begins; populate before `ready` or execution |
+| SUMMARY.md | First meaningful implementation progress or implementation handoff; populate before `implemented` |
+| VERIFICATION.md | First check result or human feedback; populate before `verified`, `awaiting_feedback` or `complete` |
+
+Evidence referenced by an executed check or accepted feedback must already exist, regardless of the slice's status. A failed early check therefore needs its evidence immediately. A blocked or paused slice keeps all existing documents and records partial progress in the relevant report or handoff notes. Never delete older files merely because an earlier stage would not create them today.
+
+The lead owns shared records and state.json; workers own assigned slice reports. state.json is authoritative for indexed lifecycle metadata. Markdown holds reasoning, evidence and user provenance. Actual code and fresh verification take precedence over stale records. Update these after consequential discussions, dispatch, meaningful progress, blockers, feedback and before a pause/handoff; store concise decisions, not transcripts.
+
+## Generated summaries and compatibility
+
+After updating the index, run `bsg.py sync --root <project>`. It validates records, then refreshes only the `<!-- BSG:GENERATED:BEGIN -->` / `<!-- BSG:GENERATED:END -->` sections of ROADMAP.md and STATE.md. Roadmap rows derive IDs, titles, statuses, dependencies and revisions from state.json. State rows derive checks (including failures and stale results), human acceptance, recorded agents and blockers, plus a suggested next step. Do not hand-edit these sections or copy their fields into other status tables.
+
+Keep provisional roadmap ideas, checkpoint rationale, current conversational focus, unanswered questions, execution-authorization references and resume details outside the generated sections. These notes supply context the index does not contain. A suggested next step never supplies build authorization, and a recorded agent handle never proves a live worker.
+
+Existing schema-version-1 projects remain supported. On the first sync, files without generated markers keep their original bytes and receive an appended generated section; reconcile old status prose into concise notes or historical context rather than maintaining two current status lists. Existing marked sections are replaced without changing surrounding notes. Malformed markers or unsafe output paths stop the sync before either file is written. Sync does not change the index, grant acceptance, or run during read-only help/status. Those commands read the index directly, so a stale or absent generated file cannot determine their recommendation.
+
+If Python is unavailable, maintain the same derived sections manually from the index and disclose that automated validation/sync was unavailable. Do not require ROADMAP.md or STATE.md to exist before inspecting an older or partially restored project; regenerate them on an authorized write path. PROJECT.md remains required, and DECISIONS.md is required when the index contains decisions.
 
 ## Index format (schema version 1)
 
@@ -66,7 +73,7 @@ Increment the slice revision when agreed behavior or implementation changes inva
 
 PROJECT: problem; users; desired experience; first release; out of scope; constraints; agent effort; human involvement; execution authorization; frontend direction.
 
-ROADMAP: ID; outcome; dependency IDs; readiness; testing checkpoint; what feedback teaches us; whether unrelated work may proceed.
+ROADMAP notes: proposed outcomes; testing checkpoints; what feedback teaches us; whether unrelated work may proceed. Indexed fields are generated.
 
 CONTEXT: intent; user examples; agreed decisions with revisions; assumptions; open questions; scope boundaries.
 
@@ -78,4 +85,4 @@ VERIFICATION: checked code identity/revision; procedure; expected/observed; resu
 
 The helper validates bookkeeping consistency, not truth. The lead must verify code and evidence contents before completion. If records conflict, show the discrepancy and reconcile; do not silently recommend new work from an invalid ledger.
 
-Scaffolded documents are placeholders. `discussed` requires populated slice context; `ready` and subsequent execution states also require a populated plan. The helper rejects empty/headings-only scaffolds in those states, but cannot establish whether the content reflects actual agreement. The lead checks that provenance, unresolved choices, and research links support the transition. Keep proposed approaches in discovery/research until context is captured; label incomplete plans as drafts and do not treat them as executable.
+A scaffolded CONTEXT.md is a placeholder; create other records only when needed. `discussed` requires populated slice context; `ready` and subsequent execution states also require a populated plan. The helper rejects empty/headings-only scaffolds in those states, but cannot establish whether the content reflects actual agreement. The lead checks that provenance, unresolved choices, and research links support the transition. Keep proposed approaches in discovery/research until context is captured; label incomplete plans as drafts and do not treat them as executable.

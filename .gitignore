@@ -3,3 +3,6 @@ __pycache__/
 .test-work/
 .agents/
 .claude/skills/
+
+# Local records for developing BSG itself; not part of the distribution.
+/.planning/

@@ -97,11 +97,12 @@ def init(root, name):
     planning.mkdir(parents=True)
     for folder in ("slices", "research", "discovery"):
         (planning / folder).mkdir()
-    docs(planning, PROJECT_DOCS, name)
+    docs(planning, {"PROJECT.md": PROJECT_DOCS["PROJECT.md"]}, name)
     state = dict(schema_version=1, project=name, paused=False, agent_effort=None,
                  human_involvement=None, decisions=[], slices=[])
     write_json(planning / "state.json", state)
     write_handoff(root, handoff)
+    sync(root)
     return state
 
 
@@ -149,7 +150,10 @@ def validate(root, data):
         errors.append("project must be a non-empty name.")
     if data.get("agent_effort") not in (None, "lean", "balanced", "deep"):
         errors.append("Unknown agent_effort.")
-    for name in PROJECT_DOCS:
+    required_docs = ["PROJECT.md"]
+    if data.get("decisions"):
+        required_docs.append("DECISIONS.md")
+    for name in required_docs:
         if not contained_file(root, f".planning/{name}"):
             errors.append(f"Missing project record: {name}")
     slices, decisions = data.get("slices"), data.get("decisions")
@@ -177,9 +181,17 @@ def validate(root, data):
         if status not in STATUSES or not positive(revision):
             errors.append(f"{label}: invalid status or revision.")
         path = s.get("path")
-        for name in SLICE_DOCS:
-            if not isinstance(path, str) or not contained_file(root, f"{path}/{name}"):
-                errors.append(f"{label}: missing or invalid {name} path.")
+        if (not isinstance(path, str) or not path or Path(path).is_absolute()
+                or ".." in Path(path).parts
+                or not (root / path).resolve().is_relative_to(root.resolve())
+                or not (root / path).is_dir()):
+            errors.append(f"{label}: missing or invalid slice directory.")
+        if status in {"implemented", "verified", "awaiting_feedback", "complete"}:
+            if not has_record_content(root, f"{path}/SUMMARY.md"):
+                errors.append(f"{label}: capture implemented work in SUMMARY.md.")
+        if status in {"verified", "awaiting_feedback", "complete"}:
+            if not has_record_content(root, f"{path}/VERIFICATION.md"):
+                errors.append(f"{label}: capture verification in VERIFICATION.md.")
         shaped = {"discussed", "ready", "building", "implemented", "verified", "awaiting_feedback", "complete"}
         if status in shaped and not has_record_content(root, f"{path}/CONTEXT.md"):
             errors.append(f"{label}: capture discussion in CONTEXT.md before marking discussed or planning execution.")
@@ -276,7 +288,7 @@ def add_slice(root, title):
     relative = f".planning/slices/{sid:03d}-{slug}"
     folder = root / relative
     folder.mkdir()  # Never overwrite an orphaned or pre-existing slice.
-    docs(folder, SLICE_DOCS, f"{sid}: {title}")
+    docs(folder, {"CONTEXT.md": SLICE_DOCS["CONTEXT.md"]}, f"{sid}: {title}")
     record = dict(id=sid, title=title, path=relative, status="outline", revision=1,
                   depends_on=[], decision_refs={}, agent=None, blocker=None, checks=[],
                   acceptance=dict(required=True, status="pending", revision=None, evidence=None))
@@ -334,9 +346,63 @@ def report(root, include_help=False):
     return "\n".join(lines), 0
 
 
+def markdown_cell(value):
+    return str(value).replace("&", "&amp;").replace("<", "&lt;").replace(">", "&gt;").replace("|", "&#124;").replace("\r", " ").replace("\n", " ")
+
+
+def summary_sections(data):
+    """Derived views only: authorization and actual worker liveness remain human checks."""
+    roadmap = ["## Recorded roadmap", "", "| ID | Outcome | Status | Depends on | Revision |",
+               "| --- | --- | --- | --- | --- |"]
+    state = ["## Recorded state", "", f"Project: {markdown_cell(data['project'])}",
+             f"Paused: {'yes' if data['paused'] else 'no'}", "",
+             "| ID | Status | Checks | Human feedback | Recorded agent | Blocker |",
+             "| --- | --- | --- | --- | --- | --- |"]
+    for s in sorted(data["slices"], key=lambda item: item["id"]):
+        roadmap.append("| " + " | ".join(markdown_cell(v) for v in (
+            s["id"], s["title"], s["status"], ", ".join(map(str, s["depends_on"])) or "—", s["revision"])) + " |")
+        counts = ", ".join(f"{result}: {sum(c['result'] == result for c in s['checks'])}"
+                           for result in ("pass", "fail", "pending", "stale"))
+        state.append("| " + " | ".join(markdown_cell(v) for v in (
+            s["id"], s["status"], counts, s["acceptance"]["status"],
+            s.get("agent") or "—", s.get("blocker") or "—")) + " |")
+    state.extend(["", "Suggested next step: " + markdown_cell(recommend(data)), "",
+                  "Recorded state only; confirm live workers, code, and authorization before acting."])
+    return {"ROADMAP.md": "\n".join(roadmap), "STATE.md": "\n".join(state)}
+
+
+def sync(root):
+    """Replace only marked generated sections, preflighting both files before writes."""
+    data = load(root)
+    errors = validate(root, data)
+    if errors:
+        raise ValueError("Reconcile records before syncing: " + "; ".join(errors))
+    begin, end = b"<!-- BSG:GENERATED:BEGIN -->", b"<!-- BSG:GENERATED:END -->"
+    pending = {}
+    for name, section in summary_sections(data).items():
+        path = root / ".planning" / name
+        if path.is_symlink() or not path.resolve().is_relative_to(root.resolve()):
+            raise ValueError(f"{name} has an unsafe destination; reconcile before syncing.")
+        original = path.read_bytes() if path.exists() else b""
+        block = begin + b"\n" + section.encode("utf-8") + b"\n" + end
+        if begin in original or end in original:
+            if original.count(begin) != 1 or original.count(end) != 1 or original.index(begin) > original.index(end):
+                raise ValueError(f"{name} has malformed generated markers; reconcile before syncing.")
+            content = original[:original.index(begin)] + block + original[original.index(end) + len(end):]
+        else:
+            introduction = ("\n\n" if original else f"# {name[:-3].title()}\n\n")
+            introduction += ("The generated section below is derived from state.json. Notes outside it are preserved; "
+                             "reconcile any older status prose against the index.\n\n")
+            content = original + introduction.encode("utf-8") + block + b"\n"
+        pending[path] = content
+    for path, content in pending.items():
+        if not path.exists() or path.read_bytes() != content:
+            path.write_bytes(content)
+
+
 def main():
     parser = argparse.ArgumentParser(description=__doc__)
-    parser.add_argument("action", choices=("init", "attach", "slice", "status", "help", "validate"))
+    parser.add_argument("action", choices=("init", "attach", "slice", "sync", "status", "help", "validate"))
     parser.add_argument("--root", type=Path, default=Path.cwd())
     parser.add_argument("--name")
     parser.add_argument("--title")
@@ -355,6 +421,9 @@ def main():
             if not args.title:
                 parser.error("slice requires --title")
             print(json.dumps(add_slice(root, args.title)))
+        elif args.action == "sync":
+            sync(root)
+            print("Refreshed generated roadmap and state sections; notes preserved.")
         elif args.action == "validate":
             errors = validate(root, load(root))
             print("\n".join(errors) if errors else "BSG records are consistent; this does not prove product correctness.")

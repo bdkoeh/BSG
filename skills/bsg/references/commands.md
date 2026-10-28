@@ -14,9 +14,7 @@ Discussion, research, planning, implementation, and verification are internal wo
 
 ## Next-step recommendation
 
-For a ready slice without build authorization, recommend the start-building choice described in delivery.md: summarize the approach and offer start implementing / start it while shaping the next slice / keep discussing, once per readiness. A helper recommendation to build expresses readiness, not permission. Read-only status/help may report “ready; awaiting your build decision” but must not dispatch workers.
-
-The lead navigates the discuss/context/research/plan sequence automatically during an authorized workflow. Explicit commands choose focus and scope; they do not bypass missing prerequisites. “Continue” means the next unmet step in the current scope. Before recommending plan/build, inspect the relevant context and plan contents, not only their filenames or indexed status. If records overstate progress, explain the gap and recover existing answers before asking targeted follow-ups.
+Use [discovery.md](discovery.md) for stage progression and [delivery.md](delivery.md#start-building-checkpoint) for the build decision. Recommendations express readiness, not authorization. Read-only status/help must not dispatch work or run `sync`; their live report comes directly from the index. Preserve the user's requested focus and reconcile missing prerequisites before suggesting advancement.
 
 The helper supplies a conservative suggestion from records; the lead reconciles it with live facts. Prioritize: inconsistent/stale records; global pause; actionable human checkpoint or blocker; verification of implemented work; ready authorized work; discuss/plan the next useful slice; discovery if no route exists. A per-slice pause does not suppress independent work already allowed to continue; surface the paused slice alongside the recommendation. Consider dependencies and explicit focus; never recommend building a blocked slice. At project completion offer the next user-requested activity, not invented work.
 

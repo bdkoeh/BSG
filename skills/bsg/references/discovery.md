@@ -20,11 +20,11 @@ Research what is needed to cut good slices: what exists, what is hard, what forc
 
 ### 4. Cut the slices
 
-Before drilling into business rules or technical details, propose a provisional slice map using [slices.md](slices.md): capability names, useful outcomes, rough dependencies, parallel tracks, and what can be tried at each checkpoint. Show it **in the conversation** and save it in ROADMAP.md. It is a map for discovery, not a finalized release commitment or build authorization. Do not wait for every rule to be settled before proposing it. Offer refinement of the framing or map; record accepted outlines with stable IDs and leave unaccepted scope clearly proposed. Update the map as later discoveries change it, carrying prior answers forward without restarting discovery.
+Before drilling into business rules or technical details, propose a provisional slice map using [slices.md](slices.md): capability names, useful outcomes, rough dependencies, parallel tracks, and what can be tried at each checkpoint. Show it **in the conversation**; use the record workflow below to preserve it. It is a map for discovery, not a finalized release commitment or build authorization. Do not wait for every rule to be settled before proposing it. Offer refinement of the framing or map; record accepted outlines with stable IDs and leave unaccepted scope clearly proposed. Update the map as later discoveries change it, carrying prior answers forward without restarting discovery.
 
 ### 5. Recap and recommend
 
-Every phase ends, and every round that changes the map or a slice's status ends, with a short recap: what was just settled, where the project stands (which slices exist and their status, what is built, what waits on the user), and a recommended next step with the alternatives. At this point that means recommending which slice to shape first, framed as a choice of slice to shape, not permission to implement. The shape of the recap is the lead's call; the helper's `status` output supplies the slice table. Never end a phase with findings alone or a vague “let me know your thoughts.”
+Apply the recap and handoff rule in SKILL.md. Recommend which slice to shape first, with refinement of the map as an alternative. This chooses discovery focus; the build checkpoint lives in [delivery.md](delivery.md). Show the map in conversation. Record agreed outlines in state.json and refresh the generated roadmap with `sync`; keep provisional scope and checkpoint rationale in notes outside its generated section.
 
 ## Per slice
 
@@ -50,13 +50,13 @@ Prepare the plan per [delivery.md](delivery.md). Readiness means the slice has c
 
 ### 5. Readiness recap and build offer
 
-Recap as in the project phase, then apply the start-building checkpoint in delivery.md: the offer always includes starting the slice now, starting it in the background while the next slice is shaped, or keeping the discussion going. Move ready work forward while discussing later slices; when a later discussion changes an active assumption, use delivery's change procedure.
+Apply the recap rule in SKILL.md and the [start-building checkpoint](delivery.md#start-building-checkpoint). Use that same reference for later changes to active work.
 
 ## Conversation habits
 
 Use interactive picker tools when available, with 2–4 meaningful suggestions per question and free-text support. Follow tool limits. Ask 3–4 related questions per round where supported, fewer for focused follow-ups. Generate suggestions from actual context; don't repeatedly ask the user to configure the framework. State key implications in accessible language. Preserve settled answers and reasons; distinguish user preferences from your recommendations, and say when a question tests an assumption taken from the user's own material rather than recommending that assumption back to them.
 
-Bring technical decisions to the user with a recommendation and concrete tradeoffs, unless delegated. Ask about aesthetic/vibe direction early for UI work; establish a basic functional first version and a finishing slice. Separate testing usability/behavior early from visual polish later. In low involvement mode, agreement on the brief and execution scope lets the lead prepare details autonomously.
+Bring technical decisions to the user with a recommendation and concrete tradeoffs, unless delegated. Ask about aesthetic/vibe direction early for UI work; establish a basic functional first version and a substantial finishing slice unless the user changes that scope. Separate testing usability/behavior early from visual polish later. In low involvement mode, agreement on the brief and execution scope lets the lead prepare details autonomously.
 
 ## Capture
 

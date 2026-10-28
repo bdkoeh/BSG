@@ -18,7 +18,7 @@ In BSG the user works through conversation; agents maintain durable records. Cod
 
 ## Packaging decisions
 
-One registered BSG skill owns behavior and exposes start, help, status, pause, and resume. The lead guides internal stages through conversation. Supporting references are loaded by mode. A standard-library Python helper provides scaffolding and conservative record checks; it does not execute projects or certify software.
+One registered BSG skill owns behavior and exposes start, help, status, pause, and resume. The lead guides internal stages through conversation. Supporting references are loaded by mode. A standard-library Python helper creates records as needed, generates roadmap/status sections from the index, and provides conservative record checks; it does not execute projects or certify software.
 
 The installer targets the project-local skill folder of whichever host the project already uses (`.claude/skills` or `.agents/skills`), both when neither exists, refusing differing existing files. The repository doubles as a Claude Code plugin marketplace so Claude users install with two commands. Invocation is `/bsg` in Claude Code and `$bsg` in Codex; plain “BSG start” works in both. The project handoff lives in `AGENTS.md`, mirrored into `CLAUDE.md` only when a project already has one, because Claude Code ignores `AGENTS.md` in that case. No global configuration, model switch, or background daemon is installed.
 

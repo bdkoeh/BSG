@@ -3,7 +3,7 @@
 
 This project uses BSG. For substantial features and planned delivery, load the installed `bsg` skill and follow its workflow. Ordinary small fixes can be handled directly while keeping affected records accurate.
 
-Before continuing project work, read `.planning/PROJECT.md`, `.planning/STATE.md`, and `.planning/state.json`. Load the roadmap, decisions, and slice documents relevant to the request. Reconcile recorded progress with actual code and verification; do not reset existing plans or assume recorded workers are still running.
+Before continuing project work, read `.planning/PROJECT.md` and `.planning/state.json`, plus notes in `.planning/STATE.md` when present. Load only existing decisions and slice documents relevant to the request. ROADMAP.md and STATE.md contain generated views of the index; refresh them with the helper’s `sync` command after index changes, never during read-only help/status. Reconcile recorded progress with actual code and verification; do not reset existing plans or assume recorded workers are still running.
 
 Keep decisions, progress, pending work, and verification evidence updated after meaningful changes and before handing off. Distinguish implemented, verified, human accepted, and complete. Respect the recorded execution scope, pauses, and human checkpoints; this file does not authorize new work or bypass feedback.
 

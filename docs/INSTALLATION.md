@@ -33,7 +33,7 @@ Use the installation prompt in the [README](../README.md). The built-in skill-in
 
 Clone or download the repository and run `python scripts/install.py --project <existing-project-folder>` (Python 3.10+; quote paths containing spaces). It detects an existing `.claude` or `.agents` folder in the project and installs there; a project with neither gets both copies. Pass `--host claude`, `--host codex`, or `--host both` to override. It refuses to replace files that differ from the source.
 
-Alternatively copy the complete `skills/bsg` directory into the host's skill folder yourself. Preserve references, assets, scripts and metadata. Do not copy this repository's `.planning` history into another project.
+Alternatively copy the complete `skills/bsg` directory into the host's skill folder yourself. Preserve references, assets, scripts and metadata. Each project creates its own `.planning` records when BSG starts; no development history is needed for installation.
 
 Start a new chat and say “BSG help”, or use `/bsg help` in Claude Code or `$bsg help` in Codex. If it is not discovered, restart the app. Installation does not authorize implementation or initialize a project.
 

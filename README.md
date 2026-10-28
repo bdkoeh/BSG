@@ -80,7 +80,9 @@ The lead guides each slice through discussion, captured context, research, and p
 
 When a slice is ready, BSG summarizes its approach and offers **start implementing** or **keep discussing**. Picking the next slice does not start its build. You can explicitly authorize several slices or delegate future build starts; otherwise, BSG waits for your build decision, including for functional previews.
 
-You work through conversation, not document approvals. The agent maintains `.planning/PROJECT.md`, `ROADMAP.md`, `DECISIONS.md`, `STATE.md`, `BACKLOG.md`, discovery/research notes, and each slice's context, plan, summary, and verification evidence.
+You work through conversation, not document approvals. The agent starts with a project brief and an index in `.planning/`. Each new slice gets a context file; plans, implementation summaries, and verification records appear when work reaches those stages. Decisions, backlog items, and research notes are recorded when needed.
+
+The index supplies the status fields in `ROADMAP.md` and `STATE.md`. Run `python <skill>/scripts/bsg.py sync --root <project>` after index changes to refresh their generated sections while preserving surrounding notes. Existing planning files remain compatible and are preserved. Help and status read the index without writing files.
 
 Initialization also creates or extends the project's root `AGENTS.md` with a short BSG handoff so future chats know which workflow and records to use. Both hosts read that file. If the project already has a `CLAUDE.md`, the same block is added there too, because Claude Code skips `AGENTS.md` when a `CLAUDE.md` exists. Existing instructions are preserved. For a project created with an older BSG version, use BSG resume with the updated skill to add the handoff without resetting plans.
 
@@ -96,7 +98,9 @@ Slices are named for testable capabilities, such as “Reserve available equipme
 
 ## Repository
 
-`skills/bsg/` contains the single installable skill, with `references/codex.md` and `references/claude-code.md` as the host adapters. `.claude-plugin/` makes the repository installable as a Claude Code plugin marketplace. `scripts/install.py` installs the skill into a project for either host. `tests/` checks helper invariants. `docs/` explains design and behavioral validation. `.planning/` records BSG's own development.
+`skills/bsg/` contains the single installable skill, with `references/codex.md` and `references/claude-code.md` as the host adapters. `.claude-plugin/` makes the repository installable as a Claude Code plugin marketplace. `scripts/install.py` installs the skill into a project for either host. `tests/` checks helper invariants. `docs/` explains design and behavioral validation.
+
+BSG's own development records in the root `.planning/` folder are local and ignored by Git. They are not part of the public distribution. Projects using BSG create their own `.planning/` records; those projects choose whether to version them.
 
 Run checks with `python -m unittest discover -s tests -v`.
 

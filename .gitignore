@@ -6,3 +6,6 @@ __pycache__/
 
 # Local records for developing BSG itself; not part of the distribution.
 /.planning/
+
+# Internal validation notes stay local.
+/docs/VALIDATION.md

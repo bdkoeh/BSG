@@ -8,7 +8,7 @@ Built for Claude Code and Codex.
 
 ## Start here
 
-BSG is one skill, `skills/bsg`, that works in either host. Pick the install path for your host; nothing else differs. A project initialized in one host can be continued in the other.
+BSG is one skill, `skills/bsg`, that works in either host. Pick the install path for your host. The workflow and records are shared; available interaction and delegation tools differ by host. A project initialized in one host can be continued in the other.
 
 ### Install through conversation
 
@@ -16,11 +16,14 @@ Paste this into Claude Code or Codex. The agent figures out which host it is and
 
 ```text
 Install BSG from https://github.com/bdkoeh/BSG for use across my projects.
-If you are Claude Code: run `claude plugin marketplace add bdkoeh/BSG` then
+For a personal install in Claude Code: run `claude plugin marketplace add bdkoeh/BSG` then
 `claude plugin install bsg@bsg`; if plugins are unavailable, copy the complete
 skills/bsg folder into ~/.claude/skills/bsg instead.
-If you are Codex: use your skill-installer with --repo bdkoeh/BSG --path skills/bsg
-and its personal destination.
+For a personal install in Codex: use $skill-installer to install skills/bsg
+from bdkoeh/BSG on main into its personal destination.
+For a project-only install in either host: instead copy the complete skills/bsg
+folder into this project's .claude/skills (Claude Code) or .agents/skills (Codex).
+Do not perform a personal install when I request project-only installation.
 Preserve existing customized skills. Then tell me how to start BSG.
 ```
 
@@ -40,6 +43,8 @@ claude plugin marketplace add bdkoeh/BSG
 claude plugin install bsg@bsg
 ```
 
+**Codex**, across projects: ask `$skill-installer` to install `skills/bsg` from `bdkoeh/BSG`. For a manual copy, put the complete folder at `~/.agents/skills/bsg`, the personal location in the [Codex skills documentation](https://learn.chatgpt.com/docs/build-skills). The bundled installer tested here instead defaults to `$CODEX_HOME/skills` (usually `~/.codex/skills`); that location was also discovered successfully. Use one personal location to avoid duplicate entries.
+
 **Either host**, into one existing project. Clone or download this repository, then run from its folder:
 
 ```powershell
@@ -52,7 +57,8 @@ The installer detects whether the project already has a `.claude` or `.agents` f
 
 | Host | Start | Help |
 | --- | --- | --- |
-| Claude Code | `/bsg start` with your idea | `/bsg help` |
+| Claude Code plugin | `/bsg:bsg start` with your idea | `/bsg:bsg help` |
+| Claude Code copied skill | `/bsg start` with your idea | `/bsg help` |
 | Codex | `$bsg start` with your idea | `$bsg help` |
 
 Natural language works in both: “Use BSG to plan the next slice.” If the skill does not appear, start a new chat or restart the app. BSG does not override either app's own `/help`.
@@ -84,9 +90,9 @@ When a slice is ready, BSG summarizes its approach and offers **start implementi
 
 You work through conversation, not document approvals. The agent starts with a project brief and an index in `.planning/`. Each new slice gets a context file; plans, implementation summaries, and verification records appear when work reaches those stages. Decisions, backlog items, and research notes are recorded when needed.
 
-The index supplies the status fields in `ROADMAP.md` and `STATE.md`. Run `python <skill>/scripts/bsg.py sync --root <project>` after index changes to refresh their generated sections while preserving surrounding notes. Existing planning files remain compatible and are preserved. Help and status read the index without writing files.
+The index supplies the status fields in `ROADMAP.md` and `STATE.md`. The agent runs `python <skill>/scripts/bsg.py sync --root <project>` after index changes to refresh their generated sections while preserving surrounding notes. You can run it manually, but do not need to remember periodic syncs. Existing planning files remain compatible and are preserved. Help and status read the index without writing files.
 
-Initialization also creates or extends the project's root `AGENTS.md` with a short BSG handoff so future chats know which workflow and records to use. Both hosts read that file. If the project already has a `CLAUDE.md`, the same block is added there too, because Claude Code skips `AGENTS.md` when a `CLAUDE.md` exists. Existing instructions are preserved. For a project created with an older BSG version, use BSG resume with the updated skill to add the handoff without resetting plans.
+Initialization creates or extends the project's root `AGENTS.md` with a short BSG handoff. If the project has `CLAUDE.md`, `.claude/CLAUDE.md`, or `CLAUDE.local.md`, the helper also adds the block to root `CLAUDE.md`. Existing instructions are preserved. Codex reads `AGENTS.md`; Claude Code's support depends on its version and instruction settings, and ancestor Claude instruction files can suppress it. See [installation details](docs/INSTALLATION.md#project-instruction-files) if the handoff is not loaded. For an older BSG project, use BSG resume with the updated skill to add the handoff without resetting plans.
 
 ## First-version boundaries
 
@@ -102,7 +108,7 @@ Slices are named for testable capabilities, such as “Reserve available equipme
 
 `skills/bsg/` contains the single installable skill, with `references/codex.md` and `references/claude-code.md` as the host adapters. `.claude-plugin/` makes the repository installable as a Claude Code plugin marketplace. `scripts/install.py` installs the skill into a project for either host. `tests/` checks helper invariants. `docs/` explains design and behavioral validation.
 
-BSG's own development records in the root `.planning/` folder are local and ignored by Git. They are not part of the public distribution. Projects using BSG create their own `.planning/` records; those projects choose whether to version them.
+BSG's own development records in the root `.planning/` folder are local and ignored by Git. They are absent from the current tracked tree and skill package; older Git history still contains them. Projects using BSG create their own `.planning/` records; those projects choose whether to version them.
 
 Run checks with `python -m unittest discover -s tests -v`.
 

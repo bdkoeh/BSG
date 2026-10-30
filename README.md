@@ -75,6 +75,12 @@ Natural language works in both: “Use BSG to plan the next slice.” If the ski
 
 Discussion, research, planning, implementation, and verification happen through conversation. You can focus on a numbered slice naturally. BSG still asks before starting implementation unless you have explicitly authorized that scope or delegated build starts.
 
+### Know what can move next
+
+Ask **BSG status** to see what needs attention and what other work could proceed. It explains which unfinished slices a build is waiting on, names failed or stale checks, and keeps paused work and human feedback visible. For example, if “Reserve equipment” needs your review, “Send reminders” depends on it, and “Search equipment” is ready independently, status recommends the review, explains why reminders must wait, and surfaces search as another possible next step.
+
+These suggestions still respect your build authorization and agreed human checkpoints. A project-wide pause suppresses work suggestions. Status and help read the current index without changing files; the generated handoff in `STATE.md` receives the same guidance on the next sync.
+
 ## How a project runs
 
 1. Establish a shared high-level product brief: users, problem, desired outcome, broad journey, and first-version boundaries. Choose agent effort separately from human involvement.

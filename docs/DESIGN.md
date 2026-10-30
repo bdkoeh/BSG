@@ -38,3 +38,13 @@ Reviewed upstream workflow sources on 2026-10-21. BSG adopts concepts, not copie
 ## Limits to test through real use
 
 Picker continuity and worker persistence depend on the host. Skill instructions cannot enforce atomic updates across independent agents or guarantee model compliance. The index catches common bookkeeping errors, but a lead must verify records against actual code and results. We should judge BSG by useful feedback, preserved decisions, avoided rework, and honest completion rather than number of agents spawned.
+
+## Actionable status sprint — 2026-10-30
+
+BSG's core promise is overlapping discovery and delivery. Inspection found that the helper exposed only passed/total check counts and one next action. An awaiting-feedback slice could hide an unrelated ready slice, while the status report omitted dependency reasons, blocker details, and recorded workers. Users and resuming agents had to reconstruct those facts from the index.
+
+Reviewed [GSD's progress workflow](https://github.com/gsd-build/get-shit-done/blob/main/get-shit-done/workflows/progress.md), which combines situational awareness with routing to a next action, and [OpenSpec's CLI reference](https://github.com/Fission-AI/OpenSpec/blob/main/docs/cli.md), which provides status inspection and next-step instructions. The applicable pattern is to pair progress with actionable guidance. BSG retains its own conversational interface and authorization rules.
+
+Selected a shared, read-only guidance layer for status/help and generated handoffs. It explains each slice's next step, names waiting dependencies, exposes nonpassing checks and optional-check distinctions, and offers other dependency-free work alongside the primary recommendation. Global pause and inconsistent records suppress work suggestions. A recorded blocker takes precedence even if the slice is still marked ready; accepted feedback is not requested again. Existing schema-version-1 records need no migration.
+
+This improves the existing workflow without adding commands, dependencies, a dashboard, or an executor. The helper cannot infer checkpoint permission from an absent dependency or certify live workers. The lead must still check scope, authorization, and actual results. Regression scenarios in `tests/test_status.py` cover mixed work, pauses, dependency gates, evidence details, read-only CLI behavior, and consistent generated views.

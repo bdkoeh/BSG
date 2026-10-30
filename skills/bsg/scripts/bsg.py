@@ -297,32 +297,70 @@ def add_slice(root, title):
     return record
 
 
-def recommend(data):
+def slice_guidance(s, indexed, paused=False):
+    """Explain a validated slice's next step without inferring execution permission."""
+    sid, status = s["id"], s["status"]
+    waiting = [indexed[d] for d in s["depends_on"] if indexed[d]["status"] != "complete"]
+    if status == "complete":
+        kind, action = "complete", "Complete; no further work assumed."
+    elif paused or status == "paused":
+        kind, action = "paused", f"BSG resume — reconcile paused slice {sid} before continuing."
+    elif status == "blocked" or s.get("blocker"):
+        kind, action = "blocked", f"Resolve slice {sid}'s blocker: {s.get('blocker') or 'inspect its handoff'}."
+    elif status in ("verified", "awaiting_feedback") and s["acceptance"]["status"] == "pending":
+        kind, action = "feedback", f"Review slice {sid} and provide the agreed human feedback."
+    elif status in ("implemented", "verified", "awaiting_feedback"):
+        kind, action = "verify", f"Verify slice {sid}'s evidence and any human gate before recording completion."
+    elif status == "ready":
+        if waiting:
+            kind, action = "waiting", f"Wait for slice {sid}'s dependencies to complete before reviewing build authorization."
+        else:
+            kind, action = "build", f"Review slice {sid}'s approach and build authorization; offer start implementing / keep discussing if approval is pending."
+    elif status == "building":
+        kind, action = "building", f"Check slice {sid}'s actual worker state and results before continuing or reassigning work."
+    else:
+        kind = "plan" if status == "discussed" else status
+        action = f"Continue {'planning' if kind == 'plan' else 'discussion of'} slice {sid}; capture missing context before advancing."
+    return dict(id=sid, kind=kind, action=action, waiting=waiting)
+
+
+def next_steps(data):
+    """One priority action plus other dependency-free opportunities, never dispatches."""
     if data["paused"]:
-        return "BSG resume — work is paused; reconcile before continuing."
-    slices = data["slices"]
-    complete = {s["id"] for s in slices if s["status"] == "complete"}
-    for s in slices:
-        if s["status"] == "awaiting_feedback":
-            return f"Review slice {s['id']} and provide the agreed human feedback."
-        if s["status"] == "blocked":
-            return f"Resolve slice {s['id']}'s blocker: {s.get('blocker') or 'inspect its handoff'}."
-    for s in slices:
-        if s["status"] in ("implemented", "verified"):
-            return f"Verify slice {s['id']}'s evidence and any human gate."
-    for status, action in (("ready", "build"), ("discussed", "plan"), ("discovery", "discuss"), ("outline", "discuss")):
-        for s in slices:
-            if s["status"] == status and (action != "build" or set(s["depends_on"]) <= complete):
-                if action == "build":
-                    return f"Review slice {s['id']}'s approach and build authorization; offer start implementing / keep discussing if approval is pending."
-                return f"Continue {'planning' if action == 'plan' else 'discussion of'} slice {s['id']}; capture missing context before advancing."
-    if slices and all(s["status"] == "complete" for s in slices):
-        return "All recorded slices are complete. Review the delivered result; no new work assumed."
-    if any(s["status"] == "paused" for s in slices):
-        return "BSG resume — reconcile paused slices."
-    if any(s["status"] == "building" for s in slices):
-        return "Check active worker results; continue useful discovery within agreed scope."
-    return "Explore the next useful outcome or resolve dependencies in conversation."
+        return "BSG resume — work is paused; reconcile before continuing.", []
+    indexed = {s["id"]: s for s in data["slices"]}
+    priority = {kind: rank for rank, kind in enumerate(
+        ("feedback", "blocked", "verify", "build", "plan", "discovery", "outline", "paused", "building", "waiting"))}
+    guidance = [slice_guidance(s, indexed) for s in data["slices"] if s["status"] != "complete"]
+    if not guidance:
+        if data["slices"]:
+            return "All recorded slices are complete. Review the delivered result; no new work assumed.", []
+        return "Explore the next useful outcome or resolve dependencies in conversation.", []
+    guidance.sort(key=lambda item: priority[item["kind"]])
+    other_work = [g["action"] for g in guidance[1:]
+                  if not g["waiting"] and g["kind"] in {"verify", "build", "plan", "discovery", "outline", "building"}]
+    return guidance[0]["action"], other_work
+
+
+def recommend(data):
+    return next_steps(data)[0]
+
+
+def check_summary(s):
+    """Keep failures and stale evidence visible instead of hiding them in a ratio."""
+    if not s["checks"]:
+        return "not defined"
+    parts = []
+    for result in ("fail", "stale", "pending", "pass"):
+        checks = [c for c in s["checks"] if c["result"] == result]
+        if checks:
+            detail = ", ".join(c["id"] + (" (optional)" if not c["required"] else "") for c in checks)
+            parts.append(f"{result}: {len(checks)}" + (f" [{detail}]" if result != "pass" else ""))
+    return "; ".join(parts)
+
+
+def waiting_summary(guidance):
+    return ", ".join(f"{s['id']} · {s['title']} ({s['status']})" for s in guidance["waiting"])
 
 
 def report(root, include_help=False):
@@ -338,11 +376,25 @@ def report(root, include_help=False):
     if errors:
         return "\n".join(lines + ["Reconciliation required:"] + errors), 1
     lines.append(f"BSG: {data['project']}")
+    lines.append(f"Paused: {'yes' if data['paused'] else 'no'}")
+    indexed = {s["id"]: s for s in data["slices"]}
     for s in data["slices"]:
-        passed = sum(c["result"] == "pass" for c in s["checks"])
-        lines.append(f"{s['id']} | {s['title']} | {s['status']} | checks {passed}/{len(s['checks'])} | human {s['acceptance']['status']}")
-    lines.append("Recommended: " + recommend(data))
-    lines.append("Recorded state only; confirm live workers and code before acting.")
+        guidance = slice_guidance(s, indexed, data["paused"])
+        lines.append(f"{s['id']} | {s['title']} | {s['status']} | checks {check_summary(s)} | human {s['acceptance']['status']}")
+        if guidance["waiting"]:
+            lines.append("  Waiting on: " + waiting_summary(guidance))
+        if s.get("blocker"):
+            lines.append("  Blocker: " + str(s["blocker"]))
+        if s.get("agent"):
+            lines.append(f"  Recorded agent: {s['agent']} (live state unconfirmed)")
+        if s["status"] != "complete":
+            lines.append("  Next: " + guidance["action"])
+    recommendation, other_work = next_steps(data)
+    lines.append("Recommended: " + recommendation)
+    if other_work:
+        lines.append("Other possible work (confirm scope, authorization, and human checkpoints):")
+        lines.extend("- " + action for action in other_work)
+    lines.append("Recorded state only; confirm live workers, code, and authorization before acting.")
     return "\n".join(lines), 0
 
 
@@ -356,17 +408,23 @@ def summary_sections(data):
                "| --- | --- | --- | --- | --- |"]
     state = ["## Recorded state", "", f"Project: {markdown_cell(data['project'])}",
              f"Paused: {'yes' if data['paused'] else 'no'}", "",
-             "| ID | Status | Checks | Human feedback | Recorded agent | Blocker |",
-             "| --- | --- | --- | --- | --- | --- |"]
+             "| ID | Status | Checks | Human feedback | Recorded agent | Blocker | Waiting on | Next step |",
+             "| --- | --- | --- | --- | --- | --- | --- | --- |"]
+    indexed = {s["id"]: s for s in data["slices"]}
     for s in sorted(data["slices"], key=lambda item: item["id"]):
         roadmap.append("| " + " | ".join(markdown_cell(v) for v in (
             s["id"], s["title"], s["status"], ", ".join(map(str, s["depends_on"])) or "—", s["revision"])) + " |")
-        counts = ", ".join(f"{result}: {sum(c['result'] == result for c in s['checks'])}"
-                           for result in ("pass", "fail", "pending", "stale"))
+        guidance = slice_guidance(s, indexed, data["paused"])
         state.append("| " + " | ".join(markdown_cell(v) for v in (
-            s["id"], s["status"], counts, s["acceptance"]["status"],
-            s.get("agent") or "—", s.get("blocker") or "—")) + " |")
-    state.extend(["", "Suggested next step: " + markdown_cell(recommend(data)), "",
+            s["id"], s["status"], check_summary(s), s["acceptance"]["status"],
+            s.get("agent") or "—", s.get("blocker") or "—",
+            waiting_summary(guidance) or "—", guidance["action"])) + " |")
+    recommendation, other_work = next_steps(data)
+    state.extend(["", "Suggested next step: " + markdown_cell(recommendation)])
+    if other_work:
+        state.extend(["", "Other possible work (confirm scope, authorization, and human checkpoints):", ""])
+        state.extend("- " + markdown_cell(action) for action in other_work)
+    state.extend(["",
                   "Recorded state only; confirm live workers, code, and authorization before acting."])
     return {"ROADMAP.md": "\n".join(roadmap), "STATE.md": "\n".join(state)}
 
